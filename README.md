@@ -7,16 +7,16 @@ Ce projet explore l'utilisation de l'informatique quantique pour remplacer ou as
 ## Fonctionnalités
 
 - **Optimisation hybride (QEWO) :** Recherche quantique des poids optimaux pour contourner les minima locaux sans calculer de gradients.
-- **Accélération quantique :** Utilisation de l'algorithme de Grover pour parcourir efficacement l'espace discret des paramètres du réseau.
-- **Benchmarks & Comparaisons :** Évaluation des performances (perte, précision et vitesse de convergence) face aux optimiseurs classiques (SGD, Adam).
-- **Passage à l'échelle :** Modélisation adaptable pour des architectures de réseaux de neurones (MLP) sur des jeux de données de classification.
+- **Accélération quantique :** Utilisation de l'algorithme de Grover pour parcourir l'espace des paramètres du réseau.
+- **Benchmarks & Comparaisons :** Évaluation des performances (fonction de pertes selon le nombre d'époques).
+- **Passage à l'échelle :** Modélisation adaptable pour des architectures de réseaux de neurones sur des jeux de données de classification.
 
 ## Architecture du Projet
 
 | Composant | Description |
 | :--- | :--- |
-| **Moteur Quantique** | Circuits quantiques et oracles construits avec **Qiskit** / **PennyLane** |
-| **Réseau de Neurones** | Architecture classique (PyTorch / Scikit-Learn) évaluée par l'oracle |
+| **Moteur Quantique** | Circuits quantiques et oracles construits avec **Q#** |
+| **Réseau de Neurones** | Architecture classique évaluée par l'oracle |
 | **Boucle Hybride** | Interface assurant la mesure quantique et la mise à jour des poids |
 
 ## Installation
