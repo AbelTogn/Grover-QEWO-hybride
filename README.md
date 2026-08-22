@@ -2,7 +2,9 @@
 
 Une implémentation hybride classique-quantique de l'optimisation des poids de réseaux de neurones basée sur l'algorithme de recherche de Grover (**QEWO** — *Quantum-Enhanced Weight Optimization*).
 
-Ce projet explore l'utilisation de l'informatique quantique pour remplacer ou assister les algorithmes classiques basés sur le gradient (comme la rétropropagation) en exploitant l'accélération quadratique $\mathcal{O}(\sqrt{N})$ de l'algorithme de Grover dans des espaces de recherche non convexes.
+L'implémentation est hybride car il est aujourd'hui impossible d'appliquer réellement QEWO à cause des limites de taille des ordinateurs quantiques.
+
+Ce projet explore l'utilisation de l'informatique quantique pour remplacer ou assister les algorithmes classiques basés sur le gradient en exploitant l'accélération quadratique $\mathcal{O}(\sqrt{N})$ de l'algorithme de Grover.
 
 ## Fonctionnalités
 
