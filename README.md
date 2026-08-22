@@ -4,6 +4,8 @@ Une implémentation hybride classique-quantique de l'optimisation des poids de r
 
 L'implémentation est hybride car il est aujourd'hui impossible d'appliquer réellement QEWO à cause des limites de taille des ordinateurs quantiques.
 
+Pour l'instant le réseau de neurones est entrainé sur des images mais cela sera changé dans le futur quand j'aurai trouvé quelque chose de plus intéressant.
+
 Ce projet explore l'utilisation de l'informatique quantique pour remplacer ou assister les algorithmes classiques basés sur le gradient en exploitant l'accélération quadratique $\mathcal{O}(\sqrt{N})$ de l'algorithme de Grover.
 
 ## Fonctionnalités
