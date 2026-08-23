@@ -11,7 +11,7 @@ with open("./Main.qs", "r") as f:
     code_qsharp = f.read()
 qsharp.eval(code_qsharp)
 
-# --- 1. Structure du Réseau Quantique (QEWO) ---
+# --- 1. Structure du Réseau (QEWO) ---
 
 class ReseauQEWO:
     def __init__(self, architecture: list[int]):
@@ -69,7 +69,7 @@ def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=1
     return float(candidats[index_gagnant])
 
 
-# --- 2. Module d'importation de vos propres images ---
+# --- 2. Module d'importation des images ---
 
 def charger_mes_images(dossier_dataset, taille_image=(16, 16)):
     classes = sorted([d for d in os.listdir(dossier_dataset) if os.path.isdir(os.path.join(dossier_dataset, d))])
@@ -99,8 +99,8 @@ def charger_mes_images(dossier_dataset, taille_image=(16, 16)):
                 y_onehot[idx_classe] = 1.0
                 Y_liste.append(y_onehot)
 
-    X = np.array(X_liste).T  # Format final : (pixels, nb_images)
-    Y = np.array(Y_liste).T  # Format final : (classes, nb_images)
+    X = np.array(X_liste).T  
+    Y = np.array(Y_liste).T  
     
     return X, Y, classes
 
@@ -132,8 +132,8 @@ def charger_et_predire_image(chemin_image, chemin_modele="mon_modele_qewo.pkl", 
 # --- 4. Boucle Principale ---
 
 def main():
-    DOSSIER_DATASET = "./dataset"  # Indiquez le chemin vers votre dossier
-    TAILLE_IMG = (4, 4)               # 16x16 = 256 pixels en entrée du réseau
+    DOSSIER_DATASET = "./dataset"  
+    TAILLE_IMG = (4, 4)               
     
     if not os.path.exists(DOSSIER_DATASET):
         print(f"Erreur : Le dossier '{DOSSIER_DATASET}' n'existe pas.")
