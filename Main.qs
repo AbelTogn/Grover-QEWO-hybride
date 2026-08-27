@@ -8,22 +8,22 @@ operation Grover(pertes : Double[], seuil : Double) : Int {
     let N = Length(pertes);
     if N == 0 { return 0; }
 
-    mutable M = 0;
+    mutable nb_solutions = 0;
     for p in pertes {
         if p <= seuil {
-            set M = M + 1;
+            set nb_solutions = nb_solutions + 1;
         }
     }
     
-    if M == 0 { return 0; }
+    if nb_solutions == 0 { return 0; }
 
-    let nQubits = BitSizeI(N - 1);
-    use qubits = Qubit[nQubits];
+    let nb_qubits = BitSizeI(N - 1);
+    use qubits = Qubit[nb_qubits];
     
     Init(qubits);
 
-    let nbIterations = IterationsOpti(N, M);
-    for i in 1..nbIterations {
+    let nb_iterations = IterationsOpti(N, nb_solutions);
+    for i in 1..nb_iterations {
         Oracle(pertes, seuil, qubits);
         Diffuseur(qubits);
     }

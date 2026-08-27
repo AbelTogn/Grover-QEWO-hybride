@@ -11,35 +11,52 @@ with open("./Main.qs", "r") as f:
     code_qsharp = f.read()
 qsharp.eval(code_qsharp)
 
+TAILLE_IMAGE = (16, 16)
+
 # --- 1. Structure du Réseau (QEWO) ---
 
 class ReseauQEWO:
+    """Réseau de neurones dense optimisé par l'algorithme QEWO (Quantum-Enhanced Weight Optimization)."""
+    
     def __init__(self, architecture: list[int]):
+        """Initialise la structure du réseau, les poids et les biais de manière aléatoire."""
         self.architecture = architecture
         self.poids = {}
         self.biais = {}
         self.nb_couches = len(architecture) - 1
+        
+        # Parcourt chaque couche du réseau pour initialiser aléatoirement les matrices de poids et de biais
         for l in range(self.nb_couches):
             self.poids[l] = np.random.randn(architecture[l+1], architecture[l]) * 0.1
             self.biais[l] = np.random.randn(architecture[l+1], 1) * 0.1
 
-    def activation_relu(self, x): return np.maximum(0, x)
-    def activation_sigmoid(self, x): return 1 / (1 + np.exp(-x))
+    def activation_relu(self, x):
+        """Applique la fonction d'activation ReLU (Rectified Linear Unit)."""
+        return np.maximum(0, x)
+        
+    def activation_sigmoid(self, x):
+        """Applique la fonction d'activation Sigmoïde."""
+        return 1 / (1 + np.exp(-x))
     
     def forward(self, X):
+        """Effectue la propagation avant (forward pass) dans l'ensemble du réseau."""
         A = X
+        # Parcourt les couches cachées et applique le produit matriciel suivi de l'activation ReLU
         for l in range(self.nb_couches - 1):
             A = self.activation_relu(np.dot(self.poids[l], A) + self.biais[l])
         return self.activation_sigmoid(np.dot(self.poids[self.nb_couches-1], A) + self.biais[self.nb_couches-1])
 
     def calculer_perte(self, X, Y):
+        """Calcule l'erreur quadratique moyenne (MSE) du réseau sur un jeu de données."""
         return np.mean((self.forward(X) - Y) ** 2)
 
     def predire(self, X):
+        """Prédit la classe ayant la plus forte probabilité pour chaque échantillon."""
         return np.argmax(self.forward(X), axis=0)
 
 
 def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=10):
+    """Optimise un poids individuel via une grille de candidats évaluée par l'algorithme quantique de Grover."""
     alpha = 0.5
     N_candidats = 16 
     
@@ -49,6 +66,7 @@ def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=1
     candidats = np.linspace(inf, sup, N_candidats)
     
     pertes = []
+    # Parcourt chaque valeur de poids candidate pour évaluer la perte MSE associée
     for candidat in candidats:
         nn.poids[couche][i, j] = candidat
         pertes.append(float(nn.calculer_perte(X, Y)))
@@ -60,6 +78,7 @@ def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=1
     expr = f"Grover({pertes}, {seuil})"
     
     tirages = []
+    # Effectue plusieurs exécutions du circuit quantique Q# pour accumuler des statistiques de tirage
     for _ in range(nb_shots):
         res = qsharp.eval(expr)
         idx = int(res[0]) if isinstance(res, list) else int(res)
@@ -71,30 +90,30 @@ def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=1
 
 # --- 2. Module d'importation des images ---
 
-def charger_mes_images(dossier_dataset, taille_image=(16, 16)):
+def charger_images(dossier_dataset, taille_image=TAILLE_IMAGE):
+    """Parcourt un dossier structuré par classes, redimensionne et vectorise les images pour le réseau."""
     classes = sorted([d for d in os.listdir(dossier_dataset) if os.path.isdir(os.path.join(dossier_dataset, d))])
     nb_classes = len(classes)
     
     X_liste = []
     Y_liste = []
 
-    print(f"[+] Classes détectées ({nb_classes}) : {classes}")
+    print(f"Classes détectées ({nb_classes}) : {classes}")
 
+    # Parcourt chaque dossier de classe pour traiter ses images
     for idx_classe, nom_classe in enumerate(classes):
         chemin_classe = os.path.join(dossier_dataset, nom_classe)
+        # Parcourt chaque fichier présent dans le dossier de la classe courante
         for fichier in os.listdir(chemin_classe):
             if fichier.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
                 chemin_img = os.path.join(chemin_classe, fichier)
                 
-                # Ouvrir, passer en niveaux de gris (L) et redimensionner
                 img = Image.open(chemin_img).convert('L')
                 img = img.resize(taille_image)
                 
-                # Normalisation [0, 1] et aplatissement en vecteur 1D
                 vecteur_img = np.array(img, dtype=np.float32).flatten() / 255.0
                 X_liste.append(vecteur_img)
                 
-                # Encodage One-Hot de la classe
                 y_onehot = np.zeros(nb_classes)
                 y_onehot[idx_classe] = 1.0
                 Y_liste.append(y_onehot)
@@ -107,12 +126,14 @@ def charger_mes_images(dossier_dataset, taille_image=(16, 16)):
 
 # --- 3. Fonctions de Sauvegarde / Chargement ---
 
-def sauvegarder_modele(nn, classes, chemin="mon_modele_qewo.pkl"):
+def sauvegarder_modele(nn, classes, chemin="modele.pkl"):
+    """Exporte les poids, biais, architecture et labels du modèle dans un fichier pickle."""
     with open(chemin, "wb") as f:
         pickle.dump({"architecture": nn.architecture, "poids": nn.poids, "biais": nn.biais, "classes": classes}, f)
     print(f"\n[+] Modèle et classes sauvegardés dans '{chemin}'")
 
-def charger_et_predire_image(chemin_image, chemin_modele="mon_modele_qewo.pkl", taille_image=(16, 16)):
+def charger_et_predire_image(chemin_image, chemin_modele="modele.pkl", taille_image=TAILLE_IMAGE):
+    """Charge un modèle sauvegardé et réalise une inférence sur une image inconnue."""
     with open(chemin_modele, "rb") as f:
         donnees = pickle.load(f)
         
@@ -132,6 +153,7 @@ def charger_et_predire_image(chemin_image, chemin_modele="mon_modele_qewo.pkl", 
 # --- 4. Boucle Principale ---
 
 def main():
+    """Fonction principale d'exécution : chargement des données, entraînement QEWO et sauvegarde."""
     DOSSIER_DATASET = "./dataset"  
     TAILLE_IMG = (4, 4)               
     
@@ -139,23 +161,25 @@ def main():
         print(f"Erreur : Le dossier '{DOSSIER_DATASET}' n'existe pas.")
         return
 
-    # Charger vos images
-    X_train, Y_train, noms_classes = charger_mes_images(DOSSIER_DATASET, TAILLE_IMG)
+    X_train, Y_train, noms_classes = charger_images(DOSSIER_DATASET, TAILLE_IMG)
     
     nb_pixels = X_train.shape[0]
     nb_classes = len(noms_classes)
     
-    # Architecture : [Pixels d'entrée, Couche Cachée, Nombre de classes]
     nn = ReseauQEWO([nb_pixels, 16, nb_classes])
     
     nb_epoques = 10
     print(f"Perte initiale : {nn.calculer_perte(X_train, Y_train):.6f}")
 
     print("\nLancement de l'entraînement quantique sur vos images...")
+    # Répète le processus d'optimisation globale sur un nombre fixe d'époques d'apprentissage
     for epoch in range(nb_epoques):
+        # Parcourt chaque couche du réseau de neurones séquentiellement
         for l in range(nn.nb_couches):
             sigma = np.std(nn.poids[l])
+            # Parcourt chaque ligne de la matrice de poids (neurones de destination)
             for i in range(nn.poids[l].shape[0]):
+                # Parcourt chaque colonne de la matrice de poids (neurones d'origine)
                 for j in range(nn.poids[l].shape[1]):
                     nouveau_poids = optimisation_poids(nn, l, i, j, sigma, X_train, Y_train)
                     nn.poids[l][i, j] = nouveau_poids
