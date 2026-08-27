@@ -25,7 +25,6 @@ class ReseauQEWO:
         self.biais = {}
         self.nb_couches = len(architecture) - 1
         
-        # Parcourt chaque couche du réseau pour initialiser aléatoirement les matrices de poids et de biais
         for l in range(self.nb_couches):
             self.poids[l] = np.random.randn(architecture[l+1], architecture[l]) * 0.1
             self.biais[l] = np.random.randn(architecture[l+1], 1) * 0.1
@@ -41,7 +40,6 @@ class ReseauQEWO:
     def forward(self, X):
         """Effectue la propagation avant (forward pass) dans l'ensemble du réseau."""
         A = X
-        # Parcourt les couches cachées et applique le produit matriciel suivi de l'activation ReLU
         for l in range(self.nb_couches - 1):
             A = self.activation_relu(np.dot(self.poids[l], A) + self.biais[l])
         return self.activation_sigmoid(np.dot(self.poids[self.nb_couches-1], A) + self.biais[self.nb_couches-1])
@@ -66,7 +64,6 @@ def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=1
     candidats = np.linspace(inf, sup, N_candidats)
     
     pertes = []
-    # Parcourt chaque valeur de poids candidate pour évaluer la perte MSE associée
     for candidat in candidats:
         nn.poids[couche][i, j] = candidat
         pertes.append(float(nn.calculer_perte(X, Y)))
@@ -78,7 +75,6 @@ def optimisation_poids(nn, couche, i, j, sigma, X, Y, tol_ratio=0.00, nb_shots=1
     expr = f"Grover({pertes}, {seuil})"
     
     tirages = []
-    # Effectue plusieurs exécutions du circuit quantique Q# pour accumuler des statistiques de tirage
     for _ in range(nb_shots):
         res = qsharp.eval(expr)
         idx = int(res[0]) if isinstance(res, list) else int(res)
@@ -100,10 +96,8 @@ def charger_images(dossier_dataset, taille_image=TAILLE_IMAGE):
 
     print(f"Classes détectées ({nb_classes}) : {classes}")
 
-    # Parcourt chaque dossier de classe pour traiter ses images
     for idx_classe, nom_classe in enumerate(classes):
         chemin_classe = os.path.join(dossier_dataset, nom_classe)
-        # Parcourt chaque fichier présent dans le dossier de la classe courante
         for fichier in os.listdir(chemin_classe):
             if fichier.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
                 chemin_img = os.path.join(chemin_classe, fichier)
@@ -172,14 +166,10 @@ def main():
     print(f"Perte initiale : {nn.calculer_perte(X_train, Y_train):.6f}")
 
     print("\nLancement de l'entraînement quantique sur vos images...")
-    # Répète le processus d'optimisation globale sur un nombre fixe d'époques d'apprentissage
     for epoch in range(nb_epoques):
-        # Parcourt chaque couche du réseau de neurones séquentiellement
         for l in range(nn.nb_couches):
             sigma = np.std(nn.poids[l])
-            # Parcourt chaque ligne de la matrice de poids (neurones de destination)
             for i in range(nn.poids[l].shape[0]):
-                # Parcourt chaque colonne de la matrice de poids (neurones d'origine)
                 for j in range(nn.poids[l].shape[1]):
                     nouveau_poids = optimisation_poids(nn, l, i, j, sigma, X_train, Y_train)
                     nn.poids[l][i, j] = nouveau_poids
@@ -187,7 +177,6 @@ def main():
         perte_courante = nn.calculer_perte(X_train, Y_train)
         print(f"Époque {epoch + 1:02d}/{nb_epoques} — Perte MSE : {perte_courante:.6f}")
 
-    # Sauvegarder le réseau entraîné
     sauvegarder_modele(nn, noms_classes, "modele.pkl")
 
 if __name__ == "__main__":
