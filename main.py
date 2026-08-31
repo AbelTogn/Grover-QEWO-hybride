@@ -165,7 +165,7 @@ def main():
     nb_epoques = 10
     print(f"Perte initiale : {nn.calculer_perte(X_train, Y_train):.6f}")
 
-    print("\nLancement de l'entraînement quantique sur vos images...")
+    print("\nLancement de l'entraînement...")
     for epoch in range(nb_epoques):
         for l in range(nn.nb_couches):
             sigma = np.std(nn.poids[l])
@@ -175,7 +175,7 @@ def main():
                     nn.poids[l][i, j] = nouveau_poids
 
         perte_courante = nn.calculer_perte(X_train, Y_train)
-        print(f"Époque {epoch + 1:02d}/{nb_epoques} — Perte MSE : {perte_courante:.6f}")
+        print(f"Époque {epoch + 1}/{nb_epoques} — Perte MSE : {perte_courante:.6f}")
 
     sauvegarder_modele(nn, noms_classes, "modele.pkl")
 
