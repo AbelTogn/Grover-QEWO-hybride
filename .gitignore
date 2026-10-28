@@ -5,3 +5,8 @@ a.out
 chien_test.jpg
 modele.pkl
 convergence_grover.png
+modele_2epochs.pkl
+modele_ancienepochs.pkl
+modele_epoch1.pkl
+modele_10epochs.pkl
+modele_pendule_qewo.pkl
