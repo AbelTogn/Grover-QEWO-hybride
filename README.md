@@ -1,31 +1,35 @@
-# Grover-QEWO Hybride
+# QEWO — Contrôle d'un pendule à n segments par apprentissage
 
-Une implémentation hybride classique-quantique de l'optimisation des poids de réseaux de neurones basée sur l'algorithme de recherche de Grover (**QEWO** — *Quantum-Enhanced Weight Optimization*).
 
-L'implémentation est hybride car il est aujourd'hui impossible d'appliquer réellement QEWO à cause des limites de taille des ordinateurs quantiques.
+## Objectifs du projet
 
-Pour l'instant le réseau de neurones est entrainé sur des images mais cela sera changé dans le futur quand j'aurai trouvé quelque chose de plus intéressant.
+- Modéliser et simuler le comportement d'un pendule triple.
+- Utiliser un réseau de neurones pour déterminer les commandes de contrôle.
+- Implémenter une méthode d'optimisation inspirée de QEWO.
+- Intégrer l'algorithme de Grover dans le processus de recherche des paramètres.
+- Comparer les performances du modèle au cours de l'entraînement.
+- Sauvegarder et recharger les paramètres appris afin de poursuivre un entraînement.
 
-Ce projet explore l'utilisation de l'informatique quantique pour remplacer ou assister les algorithmes classiques basés sur le gradient en exploitant l'accélération quadratique $\mathcal{O}(\sqrt{N})$ de l'algorithme de Grover.
 
-## Fonctionnalités
+## Utilisation
 
-- **Optimisation hybride (QEWO) :** Recherche quantique des poids optimaux pour contourner les minima locaux sans calculer de gradients.
-- **Accélération quantique :** Utilisation de l'algorithme de Grover pour parcourir l'espace des paramètres du réseau.
-- **Benchmarks & Comparaisons :** Évaluation des performances (fonction de pertes selon le nombre d'époques).
-- **Passage à l'échelle :** Modélisation adaptable pour des architectures de réseaux de neurones sur des jeux de données de classification.
+Depuis la racine du projet, activer l'environnement virtuel :
 
-## Architecture du Projet
+```bash
+source .venv/bin/activate
+```
 
-| Composant | Description |
-| :--- | :--- |
-| **Moteur Quantique** | Circuits quantiques et oracles construits avec **Q#** |
-| **Réseau de Neurones** | Architecture classique évaluée par l'oracle |
-| **Boucle Hybride** | Interface assurant la mesure quantique et la mise à jour des poids |
+Puis lancer le programme :
 
-## Installation
+```bash
+python version_hybride/main.py
+```
 
-1. **Cloner le dépôt**
-   ```bash
-   git clone [https://github.com/AbelTogn/Grover-QEWO-hybride.git](https://github.com/AbelTogn/Grover-QEWO-hybride.git)
-   cd Grover-QEWO-hybride
+Le programme propose plusieurs modes de fonctionnement :
+
+| Choix | Fonctionnement |
+|---|---|
+| `n` | Créer un nouveau modèle avec des paramètres initialisés aléatoirement |
+| `c` | Charger un modèle sauvegardé et poursuivre son entraînement |
+| `v` | Visualiser un modèle sauvegardé |
+
