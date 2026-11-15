@@ -25,8 +25,12 @@ import config as cfg
 @dataclass
 class StatsQuantiques:
     mesures: int = 0            # nombre d'exécutions du circuit (1 mesure chacune)
+    requetes_oracle: int = 0    # applications de l'oracle (= itérations de Grover, relances comprises)
     mesures_invalides: int = 0  # mesure tombée hors de M (bruit, ou N non puissance de 2)
     poids_sans_mise_a_jour: int = 0  # aucune mesure valide après MAX_ESSAIS_MESURE
+    recherches: int = 0         # nombre de recherches de Grover (un poids = une recherche)
+    somme_marques: int = 0      # somme des |M| (pour la taille moyenne de M)
+    recherches_sans_iteration: int = 0  # |M|/2^n >= 1/2 : aucune amplification, tirage uniforme
     temps: float = 0.0
 
 
@@ -48,20 +52,20 @@ def nb_qubits_registre(n_candidats):
 
 def iterations_optimales(n_marques, nb_qubits):
     """
-    Nombre d'itérations de Grover qui maximise la probabilité de mesurer un
-    état marqué : sin^2((2k+1) theta), avec theta = arcsin(sqrt(M / 2^n)).
-    La taille de l'espace est celle du registre, 2^n, pas le nombre de candidats.
+    Règle standard de Grover : k = round(pi / (4 theta) - 1/2), avec
+    theta = arcsin(sqrt(M / 2^n)). Elle place l'amplitude des états marqués à sa
+    PREMIÈRE pointe, sin^2((2k+1) theta). La taille de l'espace est celle du
+    registre, 2^n, pas le nombre de candidats.
+    Si M >= 2^n / 2, la première pointe est k=0 : une mesure uniforme tombe déjà
+    dans M avec une probabilité >= 1/2, on n'itère pas. En cas d'égalité entre
+    deux valeurs de k, on garde la plus petite (moins de portes, donc moins de
+    bruit sur du matériel réel).
     """
     taille = 2**nb_qubits
-    if n_marques <= 0 or n_marques >= taille:
+    if n_marques <= 0 or 2 * n_marques >= taille:
         return 0
     theta = math.asin(math.sqrt(n_marques / taille))
-    k_max = math.ceil(math.pi / (2.0 * theta))
-    probabilites = [math.sin((2 * k + 1) * theta) ** 2 for k in range(k_max + 1)]
-    meilleure = max(probabilites)
-    # Plus petit k atteignant le maximum (à 1e-9 près) : moins de portes, donc
-    # moins de bruit sur du matériel réel quand plusieurs k sont équivalents.
-    return next(k for k, p in enumerate(probabilites) if p >= meilleure - 1e-9)
+    return max(0, math.ceil(math.pi / (4.0 * theta) - 1.0))
 
 
 def rechercher_grover(n_candidats, marques, executeur, stats):
@@ -75,11 +79,16 @@ def rechercher_grover(n_candidats, marques, executeur, stats):
     nb_qubits = nb_qubits_registre(n_candidats)
     iterations = iterations_optimales(len(marques), nb_qubits)
     valides = {int(m) for m in marques}
+    stats.recherches += 1
+    stats.somme_marques += len(marques)
+    if iterations == 0:
+        stats.recherches_sans_iteration += 1
     liste = [int(m) for m in marques]
 
     for _ in range(cfg.MAX_ESSAIS_MESURE):
         indice = executeur(nb_qubits, liste, iterations)
         stats.mesures += 1
+        stats.requetes_oracle += iterations
         if indice in valides:
             return indice
         stats.mesures_invalides += 1

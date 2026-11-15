@@ -1,5 +1,7 @@
 """Réseau de neurones QEWO, évaluation classique des candidats (étape 3) et sauvegarde."""
+import json
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -78,7 +80,11 @@ def evaluer_reseau(nn, graines, duree=None):
 # Sauvegarde (npz, sans pickle)
 # ------------------------------------------------------------------
 
-def sauvegarder_modele(nn, alphas, epochs_effectuees, perte, perte_validation):
+def sauvegarder_modele(nn, alphas, epochs_effectuees, perte, perte_validation,
+                       chemin=None, meta=None):
+    """Sauvegarde atomique. meta : dictionnaire JSON-sérialisable (méthode, graine…)."""
+    chemin = Path(cfg.FICHIER_MODELE if chemin is None else chemin)
+    chemin.parent.mkdir(parents=True, exist_ok=True)
     donnees = {f"W{t}": W for t, W in enumerate(nn.poids)}
     donnees.update(
         architecture=np.array(nn.architecture),
@@ -88,16 +94,18 @@ def sauvegarder_modele(nn, alphas, epochs_effectuees, perte, perte_validation):
         perte=np.array(perte),
         perte_validation=np.array(perte_validation),
         methode=np.array("QEWO"),
+        meta_json=np.array(json.dumps(meta or {})),
     )
-    temporaire = cfg.FICHIER_MODELE.with_name(cfg.FICHIER_MODELE.name + ".tmp")
+    temporaire = chemin.with_name(chemin.name + ".tmp")
     with open(temporaire, "wb") as fichier:
         np.savez(fichier, **donnees)
-    os.replace(temporaire, cfg.FICHIER_MODELE)
+    os.replace(temporaire, chemin)
 
 
-def charger_modele():
+def charger_modele(chemin=None):
     """Retourne (réseau, nombre d'epochs déjà effectuées)."""
-    with np.load(cfg.FICHIER_MODELE, allow_pickle=False) as donnees:
+    chemin = cfg.FICHIER_MODELE if chemin is None else chemin
+    with np.load(chemin, allow_pickle=False) as donnees:
         if int(donnees["n_segments"]) != cfg.N_SEGMENTS:
             raise ValueError(
                 f"Le modèle a {int(donnees['n_segments'])} segments, "
@@ -108,3 +116,11 @@ def charger_modele():
         nn = ReseauQEWO(architecture, poids)
         nn.alpha_couches = donnees["alphas"].tolist()
         return nn, int(donnees["epochs_effectuees"])
+
+
+def lire_meta(chemin):
+    """Métadonnées enregistrées avec le modèle ({} pour un ancien fichier)."""
+    with np.load(chemin, allow_pickle=False) as donnees:
+        if "meta_json" not in donnees.files:
+            return {}
+        return json.loads(str(donnees["meta_json"]))

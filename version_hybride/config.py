@@ -11,9 +11,13 @@ GRAVITE = 9.81
 AMORTISSEMENT = 0.08
 COUPLE_MAX = 15.0
 OMEGA_MAX = 30.0  # garde-fou numérique sur la vitesse angulaire
+# Variante difficile : le segment 0 n'a plus d'actionneur (système sous-actionné,
+# type acrobot). Le PD de référence y échoue (0 % de réussite, testé pour 4 jeux de
+# gains) ; rien ne prouve qu'un réseau puisse stabiliser cette variante.
+SANS_MOTEUR_BASE = False
 
 # --- QEWO (valeurs de l'article, expérience 1) ---------------------------
-EPOCHS = 150
+EPOCHS = 10
 N_CANDIDATS_CACHES = 32
 N_CANDIDATS_SORTIE = 64
 ALPHA_INITIAL = 0.1
@@ -42,5 +46,13 @@ PD_KD = 12.0
 
 # --- Fichiers -----------------------------------------------------------------
 DOSSIER = Path(__file__).resolve().parent
-FICHIER_MODELE = DOSSIER.parent / "modele_pendule_qewo150.npz"
+FICHIER_MODELE = DOSSIER.parent / "modele_pendule_qewo.npz"
 FICHIER_QSHARP = DOSSIER / "Main.qs"
+
+# --- Évaluation finale (jamais utilisée pour entraîner ni valider) --------------
+GRAINES_TEST_FINAL = tuple(range(20000, 20050))
+SEUIL_REUSSITE = 0.1       # rad : |erreur angulaire| maximale de chaque segment
+FENETRE_REUSSITE = 1.0     # s : durée finale sur laquelle le seuil doit être tenu
+
+# --- Résultats des expériences ------------------------------------------------------
+DOSSIER_RESULTATS = DOSSIER.parent / "resultats"

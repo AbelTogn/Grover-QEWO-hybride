@@ -73,7 +73,7 @@ class Pendule:
     def pas(self, theta, omega, couples, dt=None):
         """Un pas d'Euler semi-implicite en deux sous-pas. Retourne (theta, omega)."""
         dt = cfg.DT if dt is None else dt
-        couples = np.clip(couples, -cfg.COUPLE_MAX, cfg.COUPLE_MAX)
+        couples = appliquer_actionneurs(couples)
         h = dt / 2.0
         for _ in range(2):
             omega = omega + self.accelerations(theta, omega, couples) * h
@@ -100,6 +100,15 @@ def erreur_angulaire(theta):
     return np.arctan2(np.sin(theta - np.pi), np.cos(theta - np.pi))
 
 
+def appliquer_actionneurs(couples):
+    """Couples réellement appliqués : saturation, et segment 0 sans moteur
+    si cfg.SANS_MOTEUR_BASE (variante sous-actionnée)."""
+    couples = np.clip(couples, -cfg.COUPLE_MAX, cfg.COUPLE_MAX)
+    if cfg.SANS_MOTEUR_BASE:
+        couples[..., 0] = 0.0
+    return couples
+
+
 def conditions_initiales(graines):
     """Mêmes tirages que reinitialiser(aleatoire=True) avec np.random.seed(graine)."""
     theta0, omega0 = [], []
@@ -110,11 +119,14 @@ def conditions_initiales(graines):
     return np.array(theta0), np.array(omega0)
 
 
-def simuler_lot(controle, k, graines, duree=None):
+def simuler_details(controle, k, graines, duree=None):
     """
     Simule k contrôleurs x len(graines) épisodes en parallèle.
     controle(theta, omega) -> couples de forme (k, s, n).
-    Retourne le coût moyen sur les graines, de forme (k,).
+    Retourne (cout, succes), tous deux de forme (k, s) :
+      - cout   : coût de chaque épisode ;
+      - succes : True si |erreur angulaire| < SEUIL_REUSSITE pour tous les
+                 segments pendant toute la dernière FENETRE_REUSSITE secondes.
     """
     duree = cfg.DUREE_EPISODE if duree is None else duree
     pendule = Pendule(cfg.N_SEGMENTS)
@@ -122,9 +134,13 @@ def simuler_lot(controle, k, graines, duree=None):
     theta = np.broadcast_to(theta0, (k, *theta0.shape)).copy()
     omega = np.broadcast_to(omega0, (k, *omega0.shape)).copy()
     cout_total = np.zeros((k, len(graines)))
+    succes = np.ones((k, len(graines)), dtype=bool)
 
-    for _ in range(max(1, int(duree / cfg.DT))):
-        couples = controle(theta, omega)
+    n_pas = max(1, int(duree / cfg.DT))
+    debut_fenetre = n_pas - max(1, int(round(cfg.FENETRE_REUSSITE / cfg.DT)))
+
+    for etape in range(n_pas):
+        couples = appliquer_actionneurs(controle(theta, omega))
         theta, omega = pendule.pas(theta, omega, couples)
         erreur = erreur_angulaire(theta)
         cout = (
@@ -133,12 +149,19 @@ def simuler_lot(controle, k, graines, duree=None):
             + 0.0005 * np.mean(couples**2, axis=-1)
         )
         cout_total += cout * cfg.DT
+        if etape >= debut_fenetre:
+            succes &= np.max(np.abs(erreur), axis=-1) < cfg.SEUIL_REUSSITE
 
-    return cout_total.mean(axis=1)
+    return cout_total, succes
 
 
-def evaluer_pd(graines, kp=None, kd=None, duree=None):
-    """Perte d'un contrôleur PD de référence (même coût, mêmes graines)."""
+def simuler_lot(controle, k, graines, duree=None):
+    """Coût moyen sur les graines pour chacun des k contrôleurs, de forme (k,)."""
+    return simuler_details(controle, k, graines, duree)[0].mean(axis=1)
+
+
+def controle_pd(kp=None, kd=None):
+    """Contrôleur PD de référence (même coût, mêmes conditions initiales)."""
     kp = cfg.PD_KP if kp is None else kp
     kd = cfg.PD_KD if kd is None else kd
 
@@ -148,4 +171,9 @@ def evaluer_pd(graines, kp=None, kd=None, duree=None):
             -cfg.COUPLE_MAX, cfg.COUPLE_MAX,
         )
 
-    return float(simuler_lot(controle, 1, graines, duree)[0])
+    return controle
+
+
+def evaluer_pd(graines, kp=None, kd=None, duree=None):
+    """Perte moyenne du contrôleur PD de référence."""
+    return float(simuler_lot(controle_pd(kp, kd), 1, graines, duree)[0])

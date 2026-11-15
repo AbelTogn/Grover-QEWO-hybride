@@ -4,7 +4,7 @@ QEWO (Quantum-Enhanced Weight Optimization), Jura & Udrescu, arXiv:2504.14568.
 Correspondance avec l'algorithme de l'article :
   1. poids uniformes dans [-1, 1], réseau sans biais, activation tanh   (reseau.py)
   2. par couche t et par poids : intervalle w ± alpha_t * sigma_t, N candidats
-     x_k = w - alpha*sigma + k * 2*alpha*sigma/(N-1)                    (ici)
+     x_k = w - alpha*sigma + k * 2*alpha*sigma/(N-1)                    (StrategieQEWO)
   3. évaluation CLASSIQUE de la perte de chaque candidat                (reseau.py)
   4. M = {k : L_k <= min(L) + tol_ratio * min(L)}                       (quantique.py)
   5. circuit de Grover sur le registre d'indices, mesure -> k*          (Main.qs)
@@ -14,6 +14,9 @@ Correspondance avec l'algorithme de l'article :
 Adaptations au contrôle (l'article traite de la classification) : perte =
 coût d'épisode du pendule, sortie tanh, pas de dropout (il rendrait la perte
 d'un candidat aléatoire).
+
+Une « stratégie » (génération des candidats + règle d'acceptation) peut être
+remplacée pour construire des baselines de même budget (voir baselines.py).
 """
 import time
 
@@ -25,6 +28,18 @@ from quantique import StatsQuantiques, indices_marques, rechercher_grover
 from reseau import (
     ReseauQEWO, evaluer_candidats, evaluer_reseau, sauvegarder_modele,
 )
+
+
+class StrategieQEWO:
+    """Étapes 2 et 6 de l'article : grille régulière, mise à jour inconditionnelle."""
+
+    nom = "qewo"
+
+    def candidats(self, valeur, borne, n):
+        return np.linspace(valeur - borne, valeur + borne, n)
+
+    def accepter(self, perte_candidat, perte_avant):
+        return True
 
 
 def formater_duree(secondes):
@@ -39,8 +54,13 @@ def formater_duree(secondes):
 
 
 def graines_entrainement(epoch):
-    """Nouveau lot de graines à chaque epoch (équivalent des mini-batchs)."""
-    return [100_000 + 100 * epoch + k for k in range(cfg.N_GRAINES_ENTRAINEMENT)]
+    """
+    Lot de graines de l'epoch (équivalent d'un mini-batch). Dépend de la graine
+    du run : les runs voient des épisodes différents. Reste disjoint des graines
+    de validation (5000...) et de test final (20000...).
+    """
+    base = 100_000 + 10_000 * cfg.GRAINE_INIT + 100 * epoch
+    return [base + k for k in range(cfg.N_GRAINES_ENTRAINEMENT)]
 
 
 def choisir_candidat(pertes, tol_ratio, executeur, stats):
@@ -59,7 +79,16 @@ def choisir_candidat(pertes, tol_ratio, executeur, stats):
     return indice
 
 
-def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
+def entrainer(nn=None, epochs_deja_faites=0, executeur=None, journal=None,
+              verbose=True, strategie=None, chemin_modele=None, meta=None):
+    """
+    Entraînement complet.
+      executeur : fonction (nb_qubits, marques, iterations) -> indice, ou None (argmin).
+      journal   : fonction appelée avec un dict par epoch (voir journal.JournalCSV).
+      verbose   : False supprime la barre de progression par poids.
+      strategie : objet avec .candidats(valeur, borne, n) et .accepter(perte, avant).
+    """
+    strategie = StrategieQEWO() if strategie is None else strategie
     architecture = [3 * cfg.N_SEGMENTS, 32, 32, cfg.N_SEGMENTS]
     if nn is None:
         nn = ReseauQEWO(architecture)
@@ -100,7 +129,8 @@ def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
     print(f"Temps mesuré par candidat évalué : {temps_par_eval * 1000:.2f} ms")
     print(
         f"Entraînement : {poids_par_epoch} poids/epoch, "
-        f"{evals_par_epoch:,} évaluations/epoch | sélection : {mode}".replace(",", " ")
+        f"{evals_par_epoch:,} évaluations/epoch | stratégie {strategie.nom} | "
+        f"sélection : {mode}".replace(",", " ")
     )
 
     stats = StatsQuantiques()
@@ -110,6 +140,41 @@ def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
     evals_totales = evals_par_epoch * cfg.EPOCHS
     poids_faits = 0
     debut_entrainement = time.perf_counter()
+
+    precedent = {"recherches": 0, "somme": 0, "sans_iteration": 0}
+
+    def ecrire_journal(epoch, perte_train, perte_val):
+        if journal is None:
+            return
+        # taille de M et part de recherches sans amplification : valeurs de CETTE epoch
+        d_rech = stats.recherches - precedent["recherches"]
+        d_somme = stats.somme_marques - precedent["somme"]
+        d_sans = stats.recherches_sans_iteration - precedent["sans_iteration"]
+        precedent.update(
+            recherches=stats.recherches, somme=stats.somme_marques,
+            sans_iteration=stats.recherches_sans_iteration,
+        )
+        journal({
+            "epoch": epoch,
+            "evaluations": nb_evals,
+            "requetes_oracle": stats.requetes_oracle,
+            "mesures": stats.mesures,
+            "mesures_hors_M": stats.mesures_invalides,
+            "poids_sans_maj": stats.poids_sans_mise_a_jour,
+            "taille_M_moy": d_somme / d_rech if d_rech else 0.0,
+            "part_sans_iteration": d_sans / d_rech if d_rech else 0.0,
+            "perte_train": perte_train,
+            "perte_val": perte_val,
+            "perte_pd_val": perte_pd,
+            "temps_s": time.perf_counter() - debut_entrainement,
+        })
+
+    # Ligne epoch=0 : réseau initial (point de départ des courbes).
+    ecrire_journal(
+        epochs_deja_faites,
+        evaluer_reseau(nn, graines),
+        evaluer_reseau(nn, list(cfg.GRAINES_VALIDATION)),
+    )
 
     def temps_restant():
         eval_moy = temps_evals / nb_evals if nb_evals else temps_par_eval
@@ -142,8 +207,8 @@ def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
                     perte_avant = perte_courante
                     borne = alphas[t] * sigma
 
-                    # Étape 2 : N candidats régulièrement espacés.
-                    candidats = np.linspace(valeur - borne, valeur + borne, n_candidats)
+                    # Étape 2 : N candidats (grille régulière pour QEWO).
+                    candidats = strategie.candidats(valeur, borne, n_candidats)
 
                     # Étape 3 : évaluation classique.
                     debut_eval = time.perf_counter()
@@ -154,12 +219,14 @@ def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
                     # Étapes 4-5 : ensemble M puis Grover.
                     indice = choisir_candidat(pertes, tol_ratio, executeur, stats)
 
-                    if indice is not None:
-                        # Étape 6 : mise à jour sans retour arrière.
+                    if indice is not None and strategie.accepter(
+                        float(pertes[indice]), perte_avant
+                    ):
+                        # Étape 6 : mise à jour (sans retour arrière pour QEWO).
                         W[i, j] = float(candidats[indice])
                         perte_courante = float(pertes[indice])
 
-                    # Étape 7 : adaptation de alpha. (Sans mesure valide, la
+                    # Étape 7 : adaptation de alpha. (Sans mise à jour, la
                     # perte n'a pas baissé : alpha augmente.)
                     if perte_courante < perte_avant:
                         alphas[t] = max(cfg.GAMMA_DOWN * alphas[t], cfg.ALPHA_MIN)
@@ -167,15 +234,17 @@ def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
                     else:
                         alphas[t] = min(cfg.GAMMA_UP * alphas[t], cfg.ALPHA_MAX)
 
-                    print(
-                        f"\rEpoch {epoch + 1}/{cfg.EPOCHS} | couche {nom_couche} | "
-                        f"poids {poids_faits}/{poids_total} "
-                        f"({100 * poids_faits / poids_total:.1f} %) | "
-                        f"restant ~{formater_duree(temps_restant())}",
-                        end="", flush=True,
-                    )
+                    if verbose:
+                        print(
+                            f"\rEpoch {epoch + 1}/{cfg.EPOCHS} | couche {nom_couche} | "
+                            f"poids {poids_faits}/{poids_total} "
+                            f"({100 * poids_faits / poids_total:.1f} %) | "
+                            f"restant ~{formater_duree(temps_restant())}",
+                            end="", flush=True,
+                        )
 
-        print()
+        if verbose:
+            print()
         nn.alpha_couches = list(alphas)
         perte_validation = evaluer_reseau(nn, list(cfg.GRAINES_VALIDATION))
         ligne = (
@@ -188,10 +257,15 @@ def entrainer(nn=None, epochs_deja_faites=0, executeur=None):
                 f" | mesures hors de M {stats.mesures_invalides - invalides_debut}"
                 f" | poids non modifiés {stats.poids_sans_mise_a_jour - sans_maj_debut}"
             )
-        print(ligne)
-        sauvegarder_modele(nn, alphas, numero + 1, perte_courante, perte_validation)
+        print(ligne, flush=True)
+        ecrire_journal(numero + 1, perte_courante, perte_validation)
+        sauvegarder_modele(
+            nn, alphas, numero + 1, perte_courante, perte_validation,
+            chemin=chemin_modele, meta=meta,
+        )
 
     nn.alpha_couches = list(alphas)
-    print(f"Modèle sauvegardé : {cfg.FICHIER_MODELE}")
+    destination = chemin_modele if chemin_modele is not None else cfg.FICHIER_MODELE
+    print(f"Modèle sauvegardé : {destination}")
     print(f"Durée totale : {formater_duree(time.perf_counter() - debut_entrainement)}")
     return nn
