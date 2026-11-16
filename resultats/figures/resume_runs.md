@@ -1,0 +1,4 @@
+| groupe | runs | epochs | évaluations | requêtes oracle | requêtes/poids | |M| moyen | sans itération (%) | mesures hors M | poids non modifiés | temps (min) | val. finale (moy.) | val. finale (écart-type) | test final (moy.) | taux de réussite (%) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| QEWO-argmin (classique) — 1 epochs | 1 | 1 | 48128 | - | - | - | - | - | - | 10.8 | 24.8093 | 0.0000 | - | - |
+| QEWO-argmin (classique) | 1 | 10 | 481280 | - | - | - | - | - | - | 68.7 | 24.2135 | 0.0000 | - | - |

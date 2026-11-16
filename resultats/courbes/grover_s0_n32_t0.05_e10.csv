@@ -1,0 +1,2 @@
+methode,graine,n_cache,n_sortie,tol_cache,tol_sortie,variante,duree_episode,epoch,evaluations,requetes_oracle,mesures,mesures_hors_M,poids_sans_maj,taille_M_moy,part_sans_iteration,perte_train,perte_val,perte_pd_val,temps_s
+grover,0,32,64,0.05,0.1,normale,5.0,0,0,0,0,0,0,0.0,0.0,25.284451838800383,26.560512005852406,0.006514089276367275,0.3707901129964739
