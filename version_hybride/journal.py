@@ -3,10 +3,8 @@ import csv
 from pathlib import Path
 
 COLONNES = [
-    # configuration du run (identique sur toutes les lignes)
     "methode", "graine", "n_cache", "n_sortie", "tol_cache", "tol_sortie",
     "variante", "duree_episode",
-    # mesures
     "epoch", "evaluations", "requetes_oracle", "mesures", "mesures_hors_M",
     "poids_sans_maj", "taille_M_moy", "part_sans_iteration",
     "perte_train", "perte_val", "perte_pd_val", "temps_s",

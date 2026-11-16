@@ -7,9 +7,6 @@ Campagne d'expériences : enchaîne les runs des séries S1 à S8.
     python version_hybride/campagne.py --toutes                # S1 à S6 (obligatoires)
     python version_hybride/campagne.py --toutes --avec-optionnelles
 
-Un run déjà terminé est sauté : on peut interrompre (Ctrl+C) et relancer la
-même commande. Pour paralléliser, lancez des séries différentes dans des
-terminaux différents, avec OMP_NUM_THREADS=1.
 """
 import argparse
 import sys
@@ -120,7 +117,7 @@ def main(argv=None):
         except KeyboardInterrupt:
             print("\nInterrompu : relancez la même commande pour reprendre.")
             return 130
-        except Exception as erreur:  # un run raté ne doit pas arrêter la nuit
+        except Exception as erreur:  
             print(f"ÉCHEC {nom_run(spec, epochs_defaut)} : {erreur!r}")
             echecs.append((nom_run(spec, epochs_defaut), repr(erreur)))
 

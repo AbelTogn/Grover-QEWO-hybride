@@ -74,7 +74,7 @@ def evaluer_dossier(dossier, graines=None, duree=None):
                 meta.get("run", chemin.stem), meta["methode"], meta["graine"],
                 meta["n_cache"], meta["tol_cache"], variante, epochs, cout, succes,
             ))
-        for variante in sorted(variantes):  # une référence PD par variante
+        for variante in sorted(variantes):  
             cfg.SANS_MOTEUR_BASE = variante == "sans_moteur_base"
             cout, succes = evaluer_pd_details(graines, duree)
             lignes.append(_ligne(f"pd_{variante}", "pd", 0, 0, 0.0, variante, 0, cout, succes))

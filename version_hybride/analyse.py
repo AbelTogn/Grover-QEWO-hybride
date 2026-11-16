@@ -1,5 +1,5 @@
 """
-Analyse des résultats : figures et tableaux pour le TIPE.
+Analyse des résultats : 
 
     python version_hybride/analyse.py            # lit resultats/, écrit resultats/figures/
     python version_hybride/analyse.py --tout     # courbes de TOUS les groupes (pas seulement la config par défaut)
@@ -18,13 +18,13 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
+import matplotlib.pyplot as plt 
+import numpy as np  
 
-import config as cfg  # noqa: E402
-import evaluation_finale as ef  # noqa: E402
-import quantique as q  # noqa: E402
-from journal import lire_csv  # noqa: E402
+import config as cfg  
+import evaluation_finale as ef  
+import quantique as q  
+from journal import lire_csv  
 
 LIBELLES = {
     "emulation": "QEWO (Grover émulé)",
@@ -37,7 +37,6 @@ COULEURS = {
 }
 MARQUEURS = {"emulation": "o", "grover": "D", "argmin": "s", "aleatoire": "^"}
 ORDRE = list(LIBELLES)
-# couleurs des groupes supplémentaires d'une même méthode (ablations : N, tol…)
 COULEURS_EXTRA = ["#ff7f0e", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
 
@@ -310,7 +309,7 @@ def resume_runs(groupes, test, dossier_figures):
         lignes_test = [t for t in test if t["methode"] == methode and t["n_cache"] == n
                        and abs(t["tol_cache"] - tol) < 1e-12 and t["variante"] == variante
                        and t["epochs"] == epochs]
-        moy = lambda cle_: float(np.mean([l[cle_] for l in derniere]))  # noqa: E731
+        moy = lambda cle_: float(np.mean([l[cle_] for l in derniere]))  
         lignes.append([
             libelle(cle), len(runs), epochs, f"{moy('evaluations'):.0f}",
             f"{moy('requetes_oracle'):.0f}" if circuit else "-",
@@ -368,7 +367,6 @@ def analyser(dossier, tout=False):
                       pd_val)
         produits.append(f)
 
-        # test final : une valeur (perte moyenne sur les épisodes de test) par modèle
         donnees_test, succes = [], []
         for c, _ in choisis:
             lignes_t = [t for t in test if t["methode"] == c[0] and t["n_cache"] == c[1]

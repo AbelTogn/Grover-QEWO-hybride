@@ -27,7 +27,7 @@ ALPHA_MIN = 0.01
 ALPHA_MAX = 1.0
 TOL_RATIO_CACHE = 0.05
 TOL_RATIO_SORTIE = 0.10
-LAMBDA_L2 = 0.0  # régularisation L2 (Frobenius) ; 0 = désactivée
+LAMBDA_L2 = 0.0  
 
 # --- Exécution quantique --------------------------------------------------
 # Une mesure du registre peut tomber hors de M (bruit matériel) : on relance
